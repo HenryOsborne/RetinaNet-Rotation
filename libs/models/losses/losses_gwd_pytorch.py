@@ -218,6 +218,7 @@ def gwd_loss(pred, target, fun='sqrt', tau=1.0, alpha=1.0, normalize=False):
     #             **kwargs)
     #         return loss
 
+
 if __name__ == '__main__':
     # pred = torch.FloatTensor([[50, 50, 10, 70, -30 / 180 * np.pi],
     #                           [50, 50, 10, 70, -30 / 180 * np.pi]])

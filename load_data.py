@@ -1,8 +1,12 @@
+import os
+
 import cv2
 import numpy as np
 import torch
 from tfrecord.torch.dataset import TFRecordDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.dataset import T_co
+
 from configs import cfgs
 from utils.image_augmentation import ImageAugmentation
 from libs.utils.coordinate_convert import get_horizen_minAreaRectangle
@@ -38,9 +42,7 @@ def decode_example(data):
     gtboxes_and_label = np.fromstring(gtboxes_and_label, dtype=np.int32)
     gtboxes_and_label = gtboxes_and_label.reshape(num_objects, -1)
 
-    img, gtboxes_and_label = resize_image(img, gtboxes_and_label)
-
-    gtboxes_and_label = torch.from_numpy(gtboxes_and_label)
+    gtboxes_and_label = torch.as_tensor(gtboxes_and_label, dtype=torch.float32)
     img = torch.from_numpy(img).permute(2, 0, 1)
     data['img_name'] = img_name
     data['img_height'] = img_height
@@ -56,18 +58,12 @@ def augment(data):
     gtboxes_and_label = data['gtboxes_and_label']
     image_augment = ImageAugmentation(cfgs)
 
-    # if is_training:
-    if cfgs.RGB2GRAY:
-        img = image_augment.random_rgb2gray(img_tensor=img, gtboxes_and_label=gtboxes_and_label)
+    if cfgs.RESIZE:
+        img, gtboxes_and_label = image_augment.resize_image(img, cfgs.SIZE[0], cfgs.SIZE[1], gtboxes_and_label)
 
     if cfgs.IMG_ROTATE:
         img, gtboxes_and_label = image_augment.random_rotate_img(img_tensor=img,
                                                                  gtboxes_and_label=gtboxes_and_label)
-
-    # img, gtboxes_and_label, img_h, img_w = image_augment.short_side_resize(img_tensor=img,
-    #                                                                        gtboxes_and_label=gtboxes_and_label,
-    #                                                                        target_shortside_len=cfgs.IMG_SHORT_SIDE_LEN,
-    #                                                                        length_limitation=cfgs.IMG_MAX_LENGTH)
 
     if cfgs.HORIZONTAL_FLIP:
         img, gtboxes_and_label = image_augment.random_flip_left_right(img_tensor=img,
@@ -76,16 +72,12 @@ def augment(data):
         img, gtboxes_and_label = image_augment.random_flip_up_down(img_tensor=img,
                                                                    gtboxes_and_label=gtboxes_and_label)
 
-    # else:
-    #     img, gtboxes_and_label, img_h, img_w = \
-    #         image_augment.short_side_resize(img_tensor=img,
-    #                                         gtboxes_and_label=gtboxes_and_label,
-    #                                         target_shortside_len=cfgs.IMG_SHORT_SIDE_LEN,
-    #                                         length_limitation=cfgs.IMG_MAX_LENGTH)
-
     mean = torch.as_tensor(cfgs.PIXEL_MEAN_)
     std = torch.as_tensor(cfgs.PIXEL_STD)
-    img = (img / 255 - mean[:, None, None]) / std[:, None, None]
+    # img = (img / 255 - mean[:, None, None]) / std[:, None, None]
+    img = img / 255
+    # gtboxes_and_label[:, :-1:2] = gtboxes_and_label[:, :-1:2] / cfgs.SIZE[0]
+    # gtboxes_and_label[:, 1:-1:2] = gtboxes_and_label[:, 1:-1:2] / cfgs.SIZE[1]
 
     data['img'] = img
     data['gtboxes_and_label_q'] = gtboxes_and_label
@@ -93,7 +85,7 @@ def augment(data):
     return data
 
 
-def collate_fn(batch):
+def collate_fn_train(batch):
     for i in range(len(batch)):
         batch[i] = decode_example(batch[i])
         batch[i] = augment(batch[i])
@@ -115,14 +107,52 @@ def build_tfrecord_loader(tfrecord_path, batch_size):
     description = {"img_name": "byte", "img_height": "int", "img_width": "int",
                    "img": "byte", "gtboxes_and_label": "byte", "num_objects": "int"}
     dataset = TFRecordDataset(tfrecord_path, index_path, description)
-    loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
+    loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn_train)
     return loader
 
 
-if __name__ == '__main__':
-    tfrecord_path = "./data/tiny/DOTA_train.tfrecord"
-    loader = build_tfrecord_loader(tfrecord_path, 1)
+class DotaTest(Dataset):
+    def __init__(self, path, cfgs):
+        self.val_list = os.listdir(path)
+        self.cfgs = cfgs
+        self.path = path
+        self.image_augment = ImageAugmentation(cfgs)
 
-    for i, data in enumerate(loader):
-        print(data)
-        print(1)
+    def __len__(self):
+        return len(self.val_list)
+
+    def __getitem__(self, index):
+        image_name = self.val_list[index]
+        img = cv2.imread(os.path.join(self.path, image_name))[:, :, ::-1].copy()
+        img = torch.as_tensor(img, dtype=torch.float32).permute(2, 0, 1)
+
+        if self.cfgs.RESIZE:
+            img = self.image_augment.resize_image(img, self.cfgs.SIZE[0], self.cfgs.SIZE[1])
+
+        return img, image_name
+
+    def collate_fn_val(self, batch):
+        img = [i[0] for i in batch]
+        image_name = [i[1] for i in batch]
+        img = torch.stack(img)
+        if len(image_name) == 1:
+            image_name = image_name[0]
+        return img, image_name
+
+
+if __name__ == '__main__':
+    ############## train ##############
+
+    # tfrecord_path = "./data/tiny/DOTA_train.tfrecord"
+    # loader = build_tfrecord_loader(tfrecord_path, 1)
+    #
+    # for i, data in enumerate(loader):
+    #     print(data)
+    #     print(1)
+
+    ############## eval ##############
+
+    dataset = DotaTest('data/tiny/images', cfgs)
+    val_loader = DataLoader(dataset, batch_size=1, collate_fn=dataset.collate_fn_val)
+    for i, (img, image_name) in enumerate(val_loader):
+        print(image_name)

@@ -23,8 +23,9 @@ GRADIENT_CLIPPING_BY_NORM = 10.0  # if None, will not clip
 
 # schedule
 BATCH_SIZE = 1
+BATCH_SIZE_VAL = 1
 GPU_GROUP = "0"
-DEVICE = 'cuda:0'  # 'cpu'
+DEVICE = 'cuda:0'  # 'cpu' 'cuda:0'
 NUM_GPU = len(GPU_GROUP.strip().split(','))
 LR = 1e-3
 SAVE_WEIGHTS_INTE = 27000 * 2
@@ -44,6 +45,8 @@ IMG_SHORT_SIDE_LEN = 600
 IMG_MAX_LENGTH = 600
 
 # data augmentation
+RESIZE = True
+SIZE = (608, 608)
 IMG_ROTATE = False
 RGB2GRAY = False
 VERTICAL_FLIP = False

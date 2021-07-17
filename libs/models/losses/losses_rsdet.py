@@ -50,7 +50,7 @@ class LossRSDet(Loss):
 
         return loss
 
-    def modulated_rotation_8p_loss(self, targets, preds, anchor_state, anchors, sigma=3.0, device=None):
+    def modulated_rotation_8p_loss(self, targets, preds, anchor_state, anchors, sigma=3.0):
         targets = targets[:, :-1].reshape(-1, 8)
 
         sigma_squared = sigma ** 2
@@ -69,8 +69,8 @@ class LossRSDet(Loss):
 
         preds = bbox_transform.qbbox_transform_inv(boxes=anchors, deltas=preds)
 
-        targets = re_order(targets)
-        targets = torch.from_numpy(targets).to(device).reshape(-1, 8)
+        targets = re_order(targets.cpu())
+        targets = torch.as_tensor(targets, device=self.device).reshape(-1, 8)
 
         # prepare for normalization
         normalizer = torch.where(anchor_state == 1)[0].detach()

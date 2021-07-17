@@ -41,7 +41,6 @@ import numpy as np
 def gereate_centering_anchor(
         base_size=16, ratios=[0.5, 1, 2],
         scales=2 ** np.arange(3, 6)):
-
     """
     Generate anchor (reference) windows by enumerating aspect ratios X
     scales wrt a reference (0, 0, 15, 15) window.

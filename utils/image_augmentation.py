@@ -7,6 +7,7 @@ from __future__ import division
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torchvision.transforms import RandomHorizontalFlip, RandomVerticalFlip, RandomGrayscale, \
     Compose, ToTensor, ToPILImage
 
@@ -20,69 +21,34 @@ class ImageAugmentation(object):
         label_map = LabelMap(cfgs)
         self.name2label = label_map.name2label()
 
-    def max_length_limitation(self, length, length_limitation):
-        if length < length_limitation:
-            return length
+    def resize_image(self, image, rw, rh, gtbox_and_label=None):
+        img_h, img_w = image.shape[1], image.shape[2]
+        image = F.interpolate(image.unsqueeze(0), size=(rw, rh), mode='bilinear')
+        if gtbox_and_label is not None:
+            x1, y1, x2, y2, x3, y3, x4, y4, label = torch.split(gtbox_and_label, 1, dim=1)
+            new_x1 = x1 * rw // img_w
+            new_x2 = x2 * rw // img_w
+            new_x3 = x3 * rw // img_w
+            new_x4 = x4 * rw // img_w
+
+            new_y1 = y1 * rh // img_h
+            new_y2 = y2 * rh // img_h
+            new_y3 = y3 * rh // img_h
+            new_y4 = y4 * rh // img_h
+            gtbox_and_label = torch.cat([new_x1, new_y1, new_x2, new_y2, new_x3, new_y3, new_x4, new_y4, label],
+                                        dim=1)
+            return image.squeeze(0), gtbox_and_label
         else:
-            return length_limitation
-
-    def short_side_resize(self, img_tensor, gtboxes_and_label, target_shortside_len, length_limitation=1200):
-        """
-        :param img_tensor:[c, h, w].
-        :param gtboxes_and_label:[-1, 9].
-        :param target_shortside_len:
-        :param length_limitation: set max length to avoid OUT OF MEMORY
-        :return:
-        """
-        img_h, img_w = img_tensor.shape[1], img_tensor.shape[2]
-        if img_h < img_w:
-            new_h, new_w = target_shortside_len, self.max_length_limitation(target_shortside_len * img_w // img_h,
-                                                                            length_limitation)
-        else:
-            new_h, new_w = self.max_length_limitation(target_shortside_len * img_h // img_w,
-                                                      length_limitation), target_shortside_len
-
-        img_tensor = torch.unsqueeze(img_tensor, dim=0)
-        img_tensor = torch.nn.functional.interpolate(img_tensor, [new_h, new_h], mode='bilinear')
-
-        # x1, y1, x2, y2, x3, y3, x4, y4, label = torch.chunk(gtboxes_and_label, chunks=9, dim=1)
-        x1, y1, x2, y2, x3, y3, x4, y4, label = torch.split(gtboxes_and_label, 1, dim=1)
-
-        x1, x2, x3, x4 = x1 * new_w // img_w, x2 * new_w // img_w, x3 * new_w // img_w, x4 * new_w // img_w
-        y1, y2, y3, y4 = y1 * new_h // img_h, y2 * new_h // img_h, y3 * new_h // img_h, y4 * new_h // img_h
-
-        img_tensor = torch.squeeze(img_tensor, dim=0)  # ensure image tensor rank is 3
-        gtboxes_and_label = torch.cat((x1, y1, x2, y2, x3, y3, x4, y4, label), dim=1)
-
-        return img_tensor, gtboxes_and_label, new_h, new_w
-
-    def short_side_resize_for_inference_data(self, img_tensor, target_shortside_len, length_limitation=1200,
-                                             is_resize=True):
-        if is_resize:
-            img_h, img_w = img_tensor.shape[1], img_tensor.shape[2]
-
-            if img_h < img_w:
-                new_h, new_w = target_shortside_len, self.max_length_limitation(target_shortside_len * img_w // img_h,
-                                                                                length_limitation)
-            else:
-                new_h, new_w = self.max_length_limitation(target_shortside_len * img_h // img_w,
-                                                          length_limitation), target_shortside_len
-
-            img_tensor = torch.unsqueeze(img_tensor, dim=0)
-            img_tensor = torch.nn.functional.interpolate(img_tensor, [new_h, new_h], mode='bilinear')
-
-            img_tensor = torch.squeeze(img_tensor, dim=0)  # ensure image tensor rank is 3
-        return img_tensor
+            return image.squeeze(0)
 
     def random_flip_left_right(self, img_tensor, gtboxes_and_label):
 
         coin = np.random.rand()
         if coin < 0.5:
             h, w = img_tensor.shape[1], img_tensor.shape[2]
-            transform = Compose([ToPILImage(), RandomHorizontalFlip(1), ToTensor()])
-            img_tensor = transform(img_tensor) * 255  # 经过transform后，img_tensor的范围在0-1之间
+            transform = RandomHorizontalFlip(1)
+            img_tensor = transform(img_tensor)
 
-            # x1, y1, x2, y2, x3, y3, x4, y4, label = torch.chunk(gtboxes_and_label, chunks=9, dim=1)
             x1, y1, x2, y2, x3, y3, x4, y4, label = torch.split(gtboxes_and_label, 1, dim=1)
             new_x1 = w - x1
             new_x2 = w - x2
@@ -98,8 +64,8 @@ class ImageAugmentation(object):
         coin = np.random.rand()
         if coin < 0.5:
             h, w = img_tensor.shape[1], img_tensor.shape[2]
-            transform = Compose([ToPILImage(), RandomVerticalFlip(1), ToTensor()])
-            img_tensor = transform(img_tensor) * 255
+            transform = RandomVerticalFlip(1)
+            img_tensor = transform(img_tensor)
 
             x1, y1, x2, y2, x3, y3, x4, y4, label = torch.split(gtboxes_and_label, 1, dim=1)
             new_y1 = h - y1
@@ -110,24 +76,6 @@ class ImageAugmentation(object):
             gtboxes_and_label = torch.cat((x1, new_y1, x2, new_y2, x3, new_y3, x4, new_y4, label), dim=1)
 
         return img_tensor, gtboxes_and_label
-
-    def random_rgb2gray(self, img_tensor, gtboxes_and_label):
-        """
-        :param img_tensor: tf.float32
-        :return:
-        """
-
-        label = gtboxes_and_label[:, -1]
-
-        if self.cfgs.DATASET_NAME.startswith('DOTA'):
-            if self.name2label['swimming-pool'] in label:
-                # do not change color, because swimming-pool need color
-                return img_tensor
-        else:
-            transform = RandomGrayscale(p=0.3)
-            img_tensor = transform(img_tensor)
-
-        return img_tensor
 
     def rotate_img_np(self, img, gtboxes_and_label, r_theta):
         h, w, c = img.shape

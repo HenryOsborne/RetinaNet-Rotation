@@ -70,7 +70,3 @@ class AnchorSamplerRetinaNet(Sampler):
 
         return np.array(all_labels, np.float32), np.array(all_target_delta, np.float32), \
                np.array(all_anchor_states, np.float32), np.array(all_target_boxes, np.float32)
-
-
-
-

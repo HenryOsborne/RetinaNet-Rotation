@@ -1,0 +1,6 @@
+torch
+numpy
+opencv-python
+pycocotools
+scikit-image
+tfrecord

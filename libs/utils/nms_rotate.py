@@ -115,7 +115,6 @@ def nms_rotate_gpu(boxes_list, scores, iou_threshold, device_id=0, max_output_si
     det_tensor = torch.cat([boxes_list, torch.unsqueeze(scores, dim=1)], dim=1)
 
     keep = rnms_gpu(det_tensor, iou_threshold, device_id)
-    keep = torch.from_numpy(keep).reshape(-1)
     return keep
 
 

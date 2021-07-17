@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import torch
 
 from libs.models.samplers.samper import Sampler
 from libs.utils.cython_utils.cython_bbox import bbox_overlaps
@@ -59,6 +60,9 @@ class AnchorSamplerRSDet(Sampler):
         #     anchors = np.stack([x1, y1, x2, y2, x3, y3, x4, y4, w, h]).transpose()
         #
         # target_delta = bbox_transform.qbbox_transform(ex_rois=anchors, gt_rois=target_boxes)
+        labels = torch.as_tensor(labels, dtype=torch.float32, device=self.device)
+        anchor_states = torch.as_tensor(anchor_states, dtype=torch.float32, device=self.device)
+        idx = torch.where(anchor_states == 1)[0]
+        print(len(idx))
 
-        return np.array(labels, np.float32), np.array(anchor_states, np.float32), np.array(target_boxes.cpu(),
-                                                                                           np.float32)
+        return labels, anchor_states, target_boxes

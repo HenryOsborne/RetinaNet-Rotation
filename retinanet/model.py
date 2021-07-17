@@ -23,25 +23,25 @@ class PyramidFeatures(nn.Module):
         super(PyramidFeatures, self).__init__()
 
         # upsample C5 to get P5 from the FPN paper
-        self.P5_1 = nn.Conv2d(C5_size, feature_size, kernel_size=1, stride=1, padding=0)
+        self.P5_1 = nn.Conv2d(C5_size, feature_size, kernel_size=(1, 1), stride=(1, 1), padding=0)
         self.P5_upsampled = nn.Upsample(scale_factor=2, mode='nearest')
-        self.P5_2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
+        self.P5_2 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), stride=(1, 1), padding=1)
 
         # add P5 elementwise to C4
-        self.P4_1 = nn.Conv2d(C4_size, feature_size, kernel_size=1, stride=1, padding=0)
+        self.P4_1 = nn.Conv2d(C4_size, feature_size, kernel_size=(1, 1), stride=(1, 1), padding=0)
         self.P4_upsampled = nn.Upsample(scale_factor=2, mode='nearest')
-        self.P4_2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
+        self.P4_2 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), stride=(1, 1), padding=1)
 
         # add P4 elementwise to C3
-        self.P3_1 = nn.Conv2d(C3_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P3_2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
+        self.P3_1 = nn.Conv2d(C3_size, feature_size, kernel_size=(1, 1), stride=(1, 1), padding=0)
+        self.P3_2 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), stride=(1, 1), padding=1)
 
         # "P6 is obtained via a 3x3 stride-2 conv on C5"
-        self.P6 = nn.Conv2d(C5_size, feature_size, kernel_size=3, stride=2, padding=1)
+        self.P6 = nn.Conv2d(C5_size, feature_size, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
         # "P7 is computed by applying ReLU followed by a 3x3 stride-2 conv on P6"
         self.P7_1 = nn.ReLU()
-        self.P7_2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=2, padding=1)
+        self.P7_2 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
     def forward(self, inputs):
         c3, c4, c5 = inputs
@@ -76,19 +76,19 @@ class RegressionModel(nn.Module):
         else:
             num_anchors = len(cfgs.ANCHOR_SCALES) * len(cfgs.ANCHOR_RATIOS) * len(cfgs.ANCHOR_ANGLES)
 
-        self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=(3, 3), padding=1)
         self.act1 = nn.ReLU()
 
-        self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), padding=1)
         self.act2 = nn.ReLU()
 
-        self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), padding=1)
         self.act3 = nn.ReLU()
 
-        self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), padding=1)
         self.act4 = nn.ReLU()
 
-        self.output = nn.Conv2d(feature_size, num_anchors * 8, kernel_size=3, padding=1)
+        self.output = nn.Conv2d(feature_size, num_anchors * 8, kernel_size=(3, 3), padding=1)
 
     def forward(self, x):
         out = self.conv1(x)
@@ -121,19 +121,19 @@ class ClassificationModel(nn.Module):
         else:
             self.num_anchors = len(cfgs.ANCHOR_SCALES) * len(cfgs.ANCHOR_RATIOS) * len(cfgs.ANCHOR_ANGLES)
 
-        self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=(3, 3), padding=1)
         self.act1 = nn.ReLU()
 
-        self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), padding=1)
         self.act2 = nn.ReLU()
 
-        self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), padding=1)
         self.act3 = nn.ReLU()
 
-        self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=(3, 3), padding=1)
         self.act4 = nn.ReLU()
 
-        self.output = nn.Conv2d(feature_size, self.num_anchors * self.num_classes, kernel_size=3, padding=1)
+        self.output = nn.Conv2d(feature_size, self.num_anchors * self.num_classes, kernel_size=(3, 3), padding=1)
         self.output_act = nn.Sigmoid()
 
     def forward(self, x):
@@ -170,10 +170,10 @@ class ClassificationModel(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, cfgs, block, layers):
+    def __init__(self, cfgs, device, block, layers):
         self.inplanes = 64
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -192,6 +192,7 @@ class ResNet(nn.Module):
             raise ValueError(f"Block type {block} not understood")
 
         self.cfgs = cfgs
+        self.device = device
 
         self.fpn = PyramidFeatures(fpn_sizes[0], fpn_sizes[1], fpn_sizes[2])
 
@@ -199,10 +200,10 @@ class ResNet(nn.Module):
 
         self.classificationModel = ClassificationModel(256, cfgs)
 
-        self.anchors = GenerateAnchors(cfgs, cfgs.METHOD)
-        self.anchor_sampler_rsdet = AnchorSamplerRSDet(cfgs)
+        self.anchors = GenerateAnchors(cfgs, cfgs.METHOD, self.device)
+        self.anchor_sampler_rsdet = AnchorSamplerRSDet(cfgs, device)
 
-        self.losses = LossRSDet(cfgs)
+        self.losses = LossRSDet(cfgs, self.device)
         self.losses_dict = {}
 
         for m in self.modules():
@@ -228,7 +229,7 @@ class ResNet(nn.Module):
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                          kernel_size=(1, 1), stride=(stride, stride), bias=False),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -245,12 +246,10 @@ class ResNet(nn.Module):
             if isinstance(layer, nn.BatchNorm2d):
                 layer.eval()
 
-    def forward(self, inputs, gtboxes_batch_r, gtboxes_batch_h):
+    def forward(self, inputs):
 
         if self.training:
-            img_batch = inputs
-            gtboxes_batch_h = gtboxes_batch_h  # list to tensor
-            gtboxes_batch_r = gtboxes_batch_r
+            img_batch, gtboxes_batch_r, gtboxes_batch_h = inputs
         else:
             img_batch = inputs
 
@@ -282,8 +281,6 @@ class ResNet(nn.Module):
             labels, anchor_states, target_boxes = self.anchor_sampler_rsdet.anchor_target_layer(gtboxes_batch_h,
                                                                                                 gtboxes_batch_r,
                                                                                                 anchors, gpu_id=0)
-            labels, anchor_states, target_boxes = \
-                torch.from_numpy(labels), torch.from_numpy(anchor_states), torch.from_numpy(target_boxes)
 
             cls_loss = self.losses.focal_loss(labels, cls_scores, anchor_states)
             # labels[num_anchors,num_class] one-hot encoding
@@ -325,13 +322,14 @@ class ResNet(nn.Module):
                 filtered_scores = scores[indices]
 
                 filtered_boxes = backward_convert(filtered_boxes, False)
+                filtered_boxes = torch.as_tensor(filtered_scores, device=self.device)
 
                 # [x, y, w, h, theta]
                 max_output_size = 4000 if 'DOTA' in self.cfgs.NET_NAME else 200
                 nms_indices = nms_rotate.nms_rotate(decode_boxes=filtered_boxes,
                                                     scores=filtered_scores.reshape(-1, ),
                                                     iou_threshold=self.cfgs.NMS_IOU_THRESHOLD,
-                                                    max_output_size=100 if is_training else max_output_size,
+                                                    max_output_size=100 if self.training else max_output_size,
                                                     use_gpu=not self.training,
                                                     gpu_id=gpu_id)
 
@@ -370,56 +368,72 @@ class ResNet(nn.Module):
         return return_boxes_pred, return_scores, return_labels
 
 
-def resnet18(cfgs, pretrained=False, **kwargs):
+def resnet18(cfgs, device, pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(cfgs, BasicBlock, [2, 2, 2, 2], **kwargs)
+    model = ResNet(cfgs, device, BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet18'], model_dir='.'), strict=False)
     return model
 
 
-def resnet34(cfgs, pretrained=False, **kwargs):
+def resnet34(cfgs, device, pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(cfgs, BasicBlock, [3, 4, 6, 3], **kwargs)
+    model = ResNet(cfgs, device, BasicBlock, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet34'], model_dir='.'), strict=False)
     return model
 
 
-def resnet50(cfgs, pretrained=False, **kwargs):
+def resnet50(cfgs, device, pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(cfgs, Bottleneck, [3, 4, 6, 3], **kwargs)
+    model = ResNet(cfgs, device, Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50'], model_dir='.'), strict=False)
     return model
 
 
-def resnet101(cfgs, pretrained=False, **kwargs):
+def resnet101(cfgs, device, pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(cfgs, Bottleneck, [3, 4, 23, 3], **kwargs)
+    model = ResNet(cfgs, device, Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101'], model_dir='.'), strict=False)
     return model
 
 
-def resnet152(cfgs, pretrained=False, **kwargs):
+def resnet152(cfgs, device, pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(cfgs, Bottleneck, [3, 8, 36, 3], **kwargs)
+    model = ResNet(cfgs, device, Bottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet152'], model_dir='.'), strict=False)
     return model
+
+
+def build_model(depth, cfgs, device):
+    if depth == 18:
+        retinanet = resnet18(cfgs, device, pretrained=True)
+    elif depth == 34:
+        retinanet = resnet34(cfgs, device, pretrained=True)
+    elif depth == 50:
+        retinanet = resnet50(cfgs, device, pretrained=True)
+    elif depth == 101:
+        retinanet = resnet101(cfgs, device, pretrained=True)
+    elif depth == 152:
+        retinanet = resnet152(cfgs, device, pretrained=True)
+    else:
+        raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
+    return retinanet
