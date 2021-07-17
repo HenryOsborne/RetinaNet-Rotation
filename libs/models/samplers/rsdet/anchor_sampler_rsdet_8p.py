@@ -16,8 +16,8 @@ class AnchorSamplerRSDet(Sampler):
 
     def anchor_target_layer(self, gt_boxes_h, gt_boxes_r, anchors, gpu_id=0):
 
-        anchor_states = np.zeros((anchors.shape[0],))
-        labels = np.zeros((anchors.shape[0], self.cfgs.CLASS_NUM))
+        anchor_states = torch.zeros((anchors.shape[0],), device=self.device)
+        labels = torch.zeros((anchors.shape[0], self.cfgs.CLASS_NUM), device=self.device)
         if gt_boxes_r.shape[0]:
             # [N, M]
 
@@ -28,8 +28,9 @@ class AnchorSamplerRSDet(Sampler):
                 overlaps = rbbx_overlaps(np.ascontiguousarray(anchors, dtype=np.float32),
                                          np.ascontiguousarray(gt_boxes_r[:, :-1], dtype=np.float32), gpu_id)
 
-            argmax_overlaps_inds = np.argmax(overlaps, axis=1)
-            max_overlaps = overlaps[np.arange(overlaps.shape[0]), argmax_overlaps_inds]
+            overlaps = torch.as_tensor(overlaps, device=self.device)
+            argmax_overlaps_inds = torch.argmax(overlaps, dim=1)
+            max_overlaps = overlaps[torch.arange(overlaps.shape[0]), argmax_overlaps_inds]
 
             # compute box regression targets
             target_boxes = gt_boxes_r[argmax_overlaps_inds]
@@ -41,10 +42,11 @@ class AnchorSamplerRSDet(Sampler):
             anchor_states[positive_indices] = 1
 
             # compute target class labels
-            labels[positive_indices, target_boxes.cpu().numpy()[positive_indices, -1].astype(int) - 1] = 1
+            idx = target_boxes[positive_indices, -1].type(torch.int64)
+            labels[positive_indices, idx - 1] = 1
         else:
             # no annotations? then everything is background
-            target_boxes = np.zeros((anchors.shape[0], gt_boxes_r.shape[1]))
+            target_boxes = torch.zeros((anchors.shape[0], gt_boxes_r.shape[1]))
 
         # if self.cfgs.METHOD == 'H':
         #     w = anchors[:, 2] - anchors[:, 0] + 1
@@ -60,9 +62,7 @@ class AnchorSamplerRSDet(Sampler):
         #     anchors = np.stack([x1, y1, x2, y2, x3, y3, x4, y4, w, h]).transpose()
         #
         # target_delta = bbox_transform.qbbox_transform(ex_rois=anchors, gt_rois=target_boxes)
-        labels = torch.as_tensor(labels, dtype=torch.float32, device=self.device)
-        anchor_states = torch.as_tensor(anchor_states, dtype=torch.float32, device=self.device)
-        idx = torch.where(anchor_states == 1)[0]
-        print(len(idx))
+        # labels = torch.as_tensor(labels, dtype=torch.float32, device=self.device)
+        # anchor_states = torch.as_tensor(anchor_states, dtype=torch.float32, device=self.device)
 
         return labels, anchor_states, target_boxes

@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--show_box', '-s', default=False, action='store_true')
     parser.add_argument('--val_image', help='Path to val image', type=str, default='data/tiny/images')
     parser.add_argument('--model', help='Path to model (.pth) file.', type=str,
-                        default='work_dir/RetinaNet_DOTA_1x_20210715/DOTA_retinanet_11.pth')
+                        default='work_dir/TINY/DOTA_retinanet_20.pth')
 
     args = parser.parse_args()
 

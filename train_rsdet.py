@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument('--tfrecord', help='tfrecord path', type=str, default='data/tiny/DOTA_train.tfrecord')
     parser.add_argument('--depth', help='Resnet depth, must be one of 18, 34, 50, 101, 152', type=int, default=50)
     parser.add_argument('--epochs', help='Number of epochs', type=int, default=20)
+    parser.add_argument('--version', type=str, default='TINY')
 
     args = parser.parse_args()
 
@@ -31,7 +32,7 @@ class TrainDOTA(object):
         self.cfgs = cfgs
         self.args = parse_args()
         self.device = torch.device(cfgs.DEVICE)
-        self.work_dir = osp.join('work_dir', cfgs.VERSION)
+        self.work_dir = osp.join('work_dir', self.args.version)
         os.makedirs(self.work_dir, exist_ok=True)
 
         self.loader = build_tfrecord_loader(self.args.tfrecord, self.cfgs.BATCH_SIZE)

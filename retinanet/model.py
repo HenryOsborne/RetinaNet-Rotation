@@ -200,8 +200,14 @@ class ResNet(nn.Module):
 
         self.classificationModel = ClassificationModel(256, cfgs)
 
-        self.anchors = GenerateAnchors(cfgs, cfgs.METHOD, self.device)
+        anchors_generator = GenerateAnchors(cfgs, cfgs.METHOD, self.device)
         self.anchor_sampler_rsdet = AnchorSamplerRSDet(cfgs, device)
+
+        ########################################################
+        feat = [76, 38, 19, 10, 5]
+        ########################################################
+        anchors = anchors_generator.generate_all_anchor_test(feat)
+        self.anchors = torch.cat(anchors, dim=0)
 
         self.losses = LossRSDet(cfgs, self.device)
         self.losses_dict = {}
@@ -274,17 +280,14 @@ class ResNet(nn.Module):
         cls_scores = cls_scores.squeeze(dim=0)
         cls_probs = cls_probs.squeeze(dim=0)
 
-        anchors = self.anchors.generate_all_anchor(features)
-        anchors = torch.cat(anchors, dim=0)
-
         if self.training:
             labels, anchor_states, target_boxes = self.anchor_sampler_rsdet.anchor_target_layer(gtboxes_batch_h,
                                                                                                 gtboxes_batch_r,
-                                                                                                anchors, gpu_id=0)
+                                                                                                self.anchors, gpu_id=0)
 
             cls_loss = self.losses.focal_loss(labels, cls_scores, anchor_states)
             # labels[num_anchors,num_class] one-hot encoding
-            reg_loss = self.losses.modulated_rotation_8p_loss(target_boxes, regression, anchor_states, anchors)
+            reg_loss = self.losses.modulated_rotation_8p_loss(target_boxes, regression, anchor_states, self.anchors)
 
             self.losses_dict['cls_loss'] = cls_loss * self.cfgs.CLS_WEIGHT
             self.losses_dict['reg_loss'] = reg_loss * self.cfgs.REG_WEIGHT
@@ -295,7 +298,7 @@ class ResNet(nn.Module):
 
             boxes, scores, category = self.postprocess_detctions(rpn_bbox_pred=regression,
                                                                  rpn_cls_prob=cls_probs,
-                                                                 anchors=anchors,
+                                                                 anchors=self.anchors,
                                                                  gpu_id=0)
             boxes = boxes.detach()
             scores = scores.detach()
