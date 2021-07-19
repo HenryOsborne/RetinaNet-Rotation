@@ -5,9 +5,8 @@ import numpy as np
 import torch
 from tfrecord.torch.dataset import TFRecordDataset
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.dataset import T_co
 
-from configs import cfgs
+import cfgs
 from utils.image_augmentation import ImageAugmentation
 from libs.utils.coordinate_convert import get_horizen_minAreaRectangle
 

@@ -6,12 +6,10 @@ import os.path as osp
 import numpy as np
 import torch
 import torch.optim as optim
-from torchvision import transforms
 
 from retinanet import model
-from retinanet.dataloader import CocoDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, Normalizer
 from load_data import build_tfrecord_loader
-from configs import cfgs
+import cfgs
 
 
 def parse_args():

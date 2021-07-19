@@ -8,6 +8,7 @@ from libs.models.samplers.rsdet.anchor_sampler_rsdet_8p import AnchorSamplerRSDe
 from libs.models.losses.losses_rsdet import LossRSDet
 from libs.utils import bbox_transform, nms_rotate
 from libs.utils.coordinate_convert import backward_convert
+from retinanet.anchors import Anchors
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -200,14 +201,9 @@ class ResNet(nn.Module):
 
         self.classificationModel = ClassificationModel(256, cfgs)
 
-        anchors_generator = GenerateAnchors(cfgs, cfgs.METHOD, self.device)
-        self.anchor_sampler_rsdet = AnchorSamplerRSDet(cfgs, device)
+        self.anchors = Anchors()
 
-        ########################################################
-        feat = [76, 38, 19, 10, 5]
-        ########################################################
-        anchors = anchors_generator.generate_all_anchor_test(feat)
-        self.anchors = torch.cat(anchors, dim=0)
+        self.anchor_sampler_rsdet = AnchorSamplerRSDet(cfgs, device)
 
         self.losses = LossRSDet(cfgs, self.device)
         self.losses_dict = {}
@@ -275,6 +271,9 @@ class ResNet(nn.Module):
         regression = regression.squeeze(dim=0)
 
         classification = [self.classificationModel(feature) for feature in features]
+
+        anchors = self.anchors(img_batch)
+
         cls_scores = torch.cat([cls[0] for cls in classification], dim=1)
         cls_probs = torch.cat([cls[1] for cls in classification], dim=1)
         cls_scores = cls_scores.squeeze(dim=0)

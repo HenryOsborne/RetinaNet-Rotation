@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from libs.models.anchor_heads import generate_h_anchors, generate_r_anchors
-from configs import cfgs
+import cfgs
 
 
 class GenerateAnchors(object):

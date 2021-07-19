@@ -54,7 +54,7 @@ HORIZONTAL_FLIP = True
 IMAGE_PYRAMID = False
 
 # model
-ROOT_PATH = os.path.abspath('./')
+ROOT_PATH = os.path.abspath('configs/')
 SUMMARY_PATH = os.path.join(ROOT_PATH, 'output/summary')
 
 # backbone

@@ -6,13 +6,15 @@ from __future__ import print_function
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 
 from libs.utils import bbox_transform
 from libs.utils.iou_rotate import iou_rotate_calculate2
 
 
-class Loss(object):
+class Loss(nn.Module):
     def __init__(self, cfgs, device):
+        super(Loss, self).__init__()
         self.cfgs = cfgs
         self.device = device
 

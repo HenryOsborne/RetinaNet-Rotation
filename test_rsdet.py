@@ -1,17 +1,13 @@
 import argparse
-import collections
 import os
 import os.path as osp
 
 import torch
-import torch.optim as optim
-from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from retinanet import model
-from retinanet.dataloader import CocoDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, Normalizer
 from load_data import DotaTest
-from configs import cfgs
+import cfgs
 
 
 def parse_args():

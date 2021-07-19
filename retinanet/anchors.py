@@ -2,10 +2,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from libs.models.anchor_heads import generate_h_anchors, generate_r_anchors
-
 
 class Anchors(nn.Module):
+    """
+    BASE_ANCHOR_SIZE_LIST = [32, 64, 128, 256, 512]
+    ANCHOR_STRIDE = [8, 16, 32, 64, 128]
+    ANCHOR_SCALES = [2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)]
+    ANCHOR_RATIOS = [1, 1 / 2, 2., 1 / 3., 3., 5., 1 / 5.]
+    """
+
     def __init__(self, pyramid_levels=None, strides=None, sizes=None, ratios=None, scales=None):
         super(Anchors, self).__init__()
 
@@ -16,7 +21,7 @@ class Anchors(nn.Module):
         if sizes is None:
             self.sizes = [2 ** (x + 2) for x in self.pyramid_levels]
         if ratios is None:
-            self.ratios = np.array([0.5, 1, 2])
+            self.ratios = np.array([1, 1 / 2, 2., 1 / 3., 3., 5., 1 / 5.])
         if scales is None:
             self.scales = np.array([2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)])
 
