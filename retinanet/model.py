@@ -6,6 +6,7 @@ from retinanet.utils import BasicBlock, Bottleneck
 from libs.models.anchor_heads.generate_anchors import GenerateAnchors
 from libs.models.samplers.rsdet.anchor_sampler_rsdet_8p import AnchorSamplerRSDet
 from libs.models.losses.losses_rsdet import LossRSDet
+from libs.models.losses.losses import FocalLoss
 from libs.utils import bbox_transform, nms_rotate
 from libs.utils.coordinate_convert import backward_convert
 from retinanet.anchors import Anchors
@@ -205,7 +206,8 @@ class ResNet(nn.Module):
 
         self.anchor_sampler_rsdet = AnchorSamplerRSDet(cfgs, device)
 
-        self.losses = LossRSDet(cfgs, self.device)
+        self.cls_loss = FocalLoss(cfgs, self.device)
+        self.reg_losses = LossRSDet(cfgs, self.device)
         self.losses_dict = {}
 
         for m in self.modules():
@@ -273,6 +275,7 @@ class ResNet(nn.Module):
         classification = [self.classificationModel(feature) for feature in features]
 
         anchors = self.anchors(img_batch)
+        anchors = anchors.squeeze(dim=0)
 
         cls_scores = torch.cat([cls[0] for cls in classification], dim=1)
         cls_probs = torch.cat([cls[1] for cls in classification], dim=1)
@@ -280,13 +283,13 @@ class ResNet(nn.Module):
         cls_probs = cls_probs.squeeze(dim=0)
 
         if self.training:
-            labels, anchor_states, target_boxes = self.anchor_sampler_rsdet.anchor_target_layer(gtboxes_batch_h,
-                                                                                                gtboxes_batch_r,
-                                                                                                self.anchors, gpu_id=0)
+            labels, anchor_states, target_boxes = self.anchor_sampler_rsdet(gtboxes_batch_h,
+                                                                            gtboxes_batch_r,
+                                                                            anchors, gpu_id=0)
 
-            cls_loss = self.losses.focal_loss(labels, cls_scores, anchor_states)
+            cls_loss = self.cls_loss(labels, cls_scores, anchor_states)
             # labels[num_anchors,num_class] one-hot encoding
-            reg_loss = self.losses.modulated_rotation_8p_loss(target_boxes, regression, anchor_states, self.anchors)
+            reg_loss = self.reg_losses(target_boxes, regression, anchor_states, anchors)
 
             self.losses_dict['cls_loss'] = cls_loss * self.cfgs.CLS_WEIGHT
             self.losses_dict['reg_loss'] = reg_loss * self.cfgs.REG_WEIGHT
@@ -297,7 +300,7 @@ class ResNet(nn.Module):
 
             boxes, scores, category = self.postprocess_detctions(rpn_bbox_pred=regression,
                                                                  rpn_cls_prob=cls_probs,
-                                                                 anchors=self.anchors,
+                                                                 anchors=anchors,
                                                                  gpu_id=0)
             boxes = boxes.detach()
             scores = scores.detach()

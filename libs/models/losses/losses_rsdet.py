@@ -4,13 +4,17 @@ from __future__ import division
 from __future__ import print_function
 
 import torch
+import torch.nn as nn
 
 from libs.utils import bbox_transform
-from libs.models.losses.losses import Loss
 from utils.order_points import re_order
 
 
-class LossRSDet(Loss):
+class LossRSDet(nn.Module):
+    def __init__(self, cfgs, device):
+        super(LossRSDet, self).__init__()
+        self.cfgs = cfgs
+        self.device = device
 
     def modulated_rotation_5p_loss(self, targets, preds, anchor_state, ratios, sigma=3.0):
         targets = targets.reshape(-1, 5)
@@ -50,7 +54,7 @@ class LossRSDet(Loss):
 
         return loss
 
-    def modulated_rotation_8p_loss(self, targets, preds, anchor_state, anchors, sigma=3.0):
+    def forward(self, targets, preds, anchor_state, anchors, sigma=3.0):
         targets = targets[:, :-1].reshape(-1, 8)
 
         sigma_squared = sigma ** 2

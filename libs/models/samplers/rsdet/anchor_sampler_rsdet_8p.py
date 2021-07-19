@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 from libs.models.samplers.samper import Sampler
 from libs.utils.cython_utils.cython_bbox import bbox_overlaps
@@ -12,9 +13,13 @@ from libs.utils import bbox_transform
 from utils.order_points import sort_corners
 
 
-class AnchorSamplerRSDet(Sampler):
+class AnchorSamplerRSDet(nn.Module):
+    def __init__(self, cfgs, device):
+        super(AnchorSamplerRSDet, self).__init__()
+        self.cfgs = cfgs
+        self.device = device
 
-    def anchor_target_layer(self, gt_boxes_h, gt_boxes_r, anchors, gpu_id=0):
+    def forward(self, gt_boxes_h, gt_boxes_r, anchors, gpu_id=0):
 
         anchor_states = torch.zeros((anchors.shape[0],), device=self.device)
         labels = torch.zeros((anchors.shape[0], self.cfgs.CLASS_NUM), device=self.device)

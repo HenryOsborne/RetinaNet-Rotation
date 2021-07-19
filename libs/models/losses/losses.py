@@ -12,14 +12,14 @@ from libs.utils import bbox_transform
 from libs.utils.iou_rotate import iou_rotate_calculate2
 
 
-class Loss(nn.Module):
+class FocalLoss(nn.Module):
     def __init__(self, cfgs, device):
-        super(Loss, self).__init__()
+        super(FocalLoss, self).__init__()
         self.cfgs = cfgs
         self.device = device
 
     # -------------------------------------- single stage methods---------------------------------------
-    def focal_loss(self, labels, pred, anchor_state, alpha=0.25, gamma=2.0):
+    def forward(self, labels, pred, anchor_state, alpha=0.25, gamma=2.0):
 
         # filter out "ignore" anchors
         indices = torch.where(anchor_state != -1)[0]
